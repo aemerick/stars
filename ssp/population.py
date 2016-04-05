@@ -1,3 +1,15 @@
+"""
+    Author: A. Emerick
+    Date  : 4/4/16
+
+    Class meant for evolution of a single stellar population 
+    formed at the same time with no ongoing star formation. Desire
+    to fix this in the future. This is meant to do simple tests 
+    of ionizing radiation and feedback properties and associated 
+    energies over time for a given stellar mass galaxy without 
+    having to run a full Enzo simulation
+"""
+
 from __future__ import division
 
 import numpy as np
