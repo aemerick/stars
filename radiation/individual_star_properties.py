@@ -544,3 +544,15 @@ def average_energy(E_i, T):
 
     return (const.k_boltz * T)*(u_dens_sum / sum)
 
+def compute_blackbody_rate(T):
+
+    x = (const.E_HI / const.eV_erg) / (const.k_boltz * T)
+    q0 = photon_radiance(x)
+    x = (const.E_HeI / const.eV_erg) / (const.k_boltz * T)
+    q1 = photon_radiance(x)
+
+    A=  2.0 * const.k_boltz**3 * T**3 / (const.h**3 *const.c**2)
+    q0 = q0 * A
+    q1 = q1 * A
+
+    return q0, q1
