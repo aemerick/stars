@@ -30,8 +30,10 @@ def salpeter(M, alpha = 2.35, xi_o=1.0):
     return xi_o * M**(-alpha)
 
 
-def sample_IMF(N, IMF,  M_min = 1.0, M_max = 100.0, npoints = 1000, **kwargs):
+def sample_IMF(IMF, N=None, M=None,  M_min = 1.0, M_max = 100.0, npoints = 1000, **kwargs):
 
+    
+    
     # bin IMF in logspace
     dm = np.log10(M_max / M_min) / (1.0*(npoints - 1))
 
@@ -46,25 +48,56 @@ def sample_IMF(N, IMF,  M_min = 1.0, M_max = 100.0, npoints = 1000, **kwargs):
     IMF_vals = np.cumsum(IMF_vals)
     IMF_vals = IMF_vals / (IMF_vals[-1] * 1.0)
 
-    random_numbers = np.random.rand(N)
-    # now sample
-
-    # do a bisect search for each number
-    mass_sample = np.zeros(N)
-    for i in np.arange(N):
-
+    def _find_bin(rnum):
         bin_number = npoints / 2
         width      = npoints / 2
 
         while ( width > 1):
             width = width / 2
-            if (random_numbers[i] > IMF_vals[bin_number]):
+            if (rnum > IMF_vals[bin_number]):
                 bin_number = bin_number + width
-            elif (random_numbers[i] < IMF_vals[bin_number]):
+            elif (rnum < IMF_vals[bin_number]):
                 bin_number = bin_number - width
             else:
                 break
-        mass_sample[i] = 10.0**(bin_number *dm)
+        return bin_number
+
+    
+    if N != None and M == None:
+        random_numbers = np.random.rand(N)
+        mass_sample = np.zeros(N)
+        for i in np.arange(N):
+            bin_number = _find_bin(random_numbers[i])
+            mass_sample[i] = 10.0**(bin_number *dm)
+            
+    elif M != None and N == None:
+        # make array now rather than appending every time
+        # max number of stars is desired mass / min mass
+        mass_sample = np.zeros(M / M_min) 
+        i = -1
+        total_mass = np.sum(mass_sample)
+        while total_mass <= M:
+            i = i + 1
+            rnum = np.random.rand()
+            
+            bin_number  = _find_bin(rnum)
+            mass_sample[i] = 10.0**(bin_number * dm)
+            total_mass = np.sum(mass_sample) 
+            
+        # does keeping or removing the final star make the total mass closest
+        # to desired? Change if needed. Must form at least 1 star though
+        if np.size(mass_sample) > 1:
+            if np.abs((total_mass - M)) < np.abs( np.sum(mass_sample[:i]) - M):
+                mass_sample[i] = 0.0
+                i = i - 1
+            
+        # now only grab the non-zero star masses
+        mass_sample = mass_sample[0:i]
+        
+        
+    else:
+        print "Can only sample by mass or number of stars. Not both"
+        return None
             
 
     return mass_sample
@@ -96,4 +129,5 @@ def DTD(t, beta = 1.2, NSN = 0.00130):
     Gyr = 3.1556E13 * 1.0E3
     yr  = Gyr / 1.0E9
 
-    return NSN * (t / Gyr)**(-beta) 
+    # given in Maoz as t in Gyr and NSN in 1/ Msun you get SN / yr / 1E10 Msun
+    return NSN * (t / Gyr)**(-beta) / (1.0E10)
