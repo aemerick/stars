@@ -2,6 +2,12 @@ import numpy as np
 import FUV_heating as FUV
 
 #
+# work function values from cloudy (in Ryd)
+#
+W_graphite = 3.235E-1
+W_silicate = 5.883E-1
+
+#
 # cloudy dust files (size grain distribution and absorption crs)
 #
 cloudy_dir = "/home/emerick/Research/stars/radiation/data/cloudy_dust/"
@@ -20,7 +26,7 @@ szd_graphite = np.genfromtxt(graphite_file_szd, skip_header = 1)
 crs_graphite = np.genfromtxt(graphite_file_abs, skip_header = 1)
 
 szd_silicate  = np.genfromtxt(silicate_file_szd, skip_header = 1)
-crs_silicate  = np.genfromtxt(silicate_file_szd, skip_header = 1)
+crs_silicate  = np.genfromtxt(silicate_file_abs, skip_header = 1)
 
 #
 # define OSTAR2002 radiation files and file properties
@@ -40,6 +46,12 @@ Z    = { 'm99' : 0.000, 'm30' : 0.001, 'm20' : 0.01, 'm17' : 1.0/50.0,
 #
 N_grains_silicate = FUV.integrate_szd(szd_silicate[:,0], szd_silicate[:,1])
 N_grains_graphite = FUV.integrate_szd(szd_graphite[:,0], szd_graphite[:,1])
+
+#N_grains_silicate = 2.412114E-21
+#N_grains_graphite = 2.084718E-21
+
+print "N_grains_si = %5.5E ---- N_grains_graph = %5.5E"%(N_grains_silicate, N_grains_graphite)
+
 
 #
 # each metallicity gets a column, each T , g combination a row
@@ -72,11 +84,13 @@ for metal_id in Z:
                     N_grains_silicate * FUV.integrate_absorption_general(crs_silicate[:,0],
                                                                          crs_silicate[:,1],
                                                                          ostar_data[:,0],
-                                                                         ostar_data[:,1]) +\
+                                                                         ostar_data[:,1],
+                                                                         W_graphite, method='simps') +\
                     N_grains_graphite * FUV.integrate_absorption_general(crs_graphite[:,0],
                                                                          crs_graphite[:,1],
                                                                          ostar_data[:,0],
-                                                                         ostar_data[:,1])
+                                                                         ostar_data[:,1],
+                                                                         W_silicate, method='simps')
 
                 i = i + 1
 
@@ -94,13 +108,13 @@ for metal_id in Z:
 
 
 # now grab and merge all the files
-nrows = np.size(T) * np.size(g)
+nrows = np.size(Teff) * np.size(g)
 ncol  = 10 + 2 # 10 Z's, 1 for each T and g
 
 
 data_array = np.zeros((nrows,ncol))
 
-data_array[:,0] = np.array(sort(list(Teff) * np.size(g)))
+data_array[:,0] = np.array(np.sort(list(Teff) * np.size(g)))
 data_array[:,1] = np.array(list(g) * np.size(Teff))
 
 i = 2
@@ -114,5 +128,5 @@ for metal_id in Z:
 
 
 np.savetxt(ostar_dir + 'ostar2002_FUV_all_models.dat', data_array,
-                 fmt = "%5.5f %3.3f %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E")
+                 fmt = "%5.f %3.3f %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E")
     
