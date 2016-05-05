@@ -81,12 +81,15 @@ class RadData:
 
         self.q0 = np.zeros(self._array_size)
         self.q1 = np.zeros(self._array_size)
-        self.q0 = self.q0.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins,self.NumberOfMetallicityBins))
-        self.q1 = self.q1.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins,self.NumberOfMetallicityBins))
+        self.q0 = self.q0.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
+        self.q1 = self.q1.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
+
+        self.FUV = np.zeros(self._array_size)
+        self.FUV = self.FUV.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
 
 
         i = 0; j = 0; k = 0
-        data =  np.genfromtxt(RADDATADIR + 'q0_rates.in', usecols=(2,3,4,5,6,7,8,9,10,11))
+        data     =  np.genfromtxt(RADDATADIR + 'q0_rates.in', usecols=(2,3,4,5,6,7,8,9,10,11))
         for line in data:
 
             for k in np.arange(np.size(line)):
@@ -110,14 +113,84 @@ class RadData:
             if (j >= self.NumberOfSGBins):
                 j = 0
                 i = i + 1
+
+
+        i = 0; j = 0; k = 0
+        data = np.genfromtxt(RADDATADIR + '/ostar2002_sed/ostar2002_FUV_all_models.dat', usecols=(2,3,4,5,6,7,8,9,10,11))
+        for line in data:
+            for k in np.arange(np.size(line)):
+                self.FUV[i][j][k] = line[k]
+
+            j = j + 1
+
+            if ( j >= self.NumberOfSGBins):
+                j = 0
+                i = i + 1
       
         # un-log q values
         self.q0 = 10.0**(self.q0)
         self.q1 = 10.0**(self.q1)
 
+        self.FUV[ self.FUV < 0.0 ] = -1 # set flagged values to -1
 
         return None
 
+    def interpolate_FUV(self, T, g, Z):
+
+        # make sure T, g, and Z are in bounds of tabulated data
+        if ( T < np.min(self.T) or T > np.max(self.T)):
+            return 0, 0
+        if ( g < np.min(self.g) or g > np.max(self.g)):
+            return 0, 0
+        if ( Z < np.min(self.Z) or Z > np.max(self.Z)):
+            return 0, 0
+
+        # find the nearest bin in each dimension (cheating from C++ version)
+        i     = (np.abs(self.T - T)).argmin()
+        if (T < self.T[i]):
+            i = i - 1
+
+        j = (np.abs(self.g - g)).argmin()
+        if (g < self.g[j]):
+            j = j - 1
+
+        k = (np.abs(self.Z - Z)).argmin()
+        if (Z < self.Z[k]):
+            k = k - 1
+
+        # compute the ratios from nearest neighber
+        t = (T - self.T[i])/(self.T[i+1] - self.T[i])
+        u = (g - self.g[j])/(self.g[j+1] - self.g[j])
+        v = (Z - self.Z[k])/(self.Z[k+1] - self.Z[k])
+
+        # a q value of 1.0 means a logq value of 0.00 in the table,
+        # which means that this combination of T, g is untabulated
+        # a q value of 1.0 means a logq value of 0.00 in the table,
+        # which means that this combination of T, g is untabulated
+        if( self.FUV[i  ][j  ][k  ] < 0 or
+            self.FUV[i  ][j+1][k  ] < 0 or
+            self.FUV[i+1][j+1][k  ] < 0 or
+            self.FUV[i+1][j  ][k  ] < 0 or
+            self.FUV[i  ][j  ][k+1] < 0 or
+            self.FUV[i  ][j+1][k+1] < 0 or
+            self.FUV[i+1][j+1][k+1] < 0 or
+            self.FUV[i+1][j  ][k+1] < 0   ):
+
+            return 0 , 0 
+
+
+        FUV = (1.0 - t)*(1.0 - u)*(1.0 - v) * self.FUV[i  ][j  ][k  ] +\
+             (1.0 - t)*(      u)*(1.0 - v) * self.FUV[i  ][j+1][k  ] +\
+             (      t)*(      u)*(1.0 - v) * self.FUV[i+1][j+1][k  ] +\
+             (      t)*(1.0 - u)*(1.0 - v) * self.FUV[i+1][j  ][k  ] +\
+             (1.0 - t)*(1.0 - u)*(      v) * self.FUV[i  ][j  ][k+1] +\
+             (1.0 - t)*(      u)*(      v) * self.FUV[i  ][j+1][k+1] +\
+             (      t)*(      u)*(      v) * self.FUV[i+1][j+1][k+1] +\
+             (      t)*(1.0 - u)*(      v) * self.FUV[i+1][j  ][k+1]
+
+
+        return 1, FUV
+    
     def interpolate(self, T, g, Z):        
         """
         Tri-linear interpolation of data given desired point in T, g, Z space
@@ -166,15 +239,6 @@ class RadData:
        
             return 0,0,0
 
-        # compute and return values
-#        q0 = (1.0 - t)*(1.0 - u)*(1.0 - v) * self.q0[i  ][j  ][k  ] +\
-#             (      t)*(1.0 - u)*(1.0 - v) * self.q0[i  ][j+1][k  ] +\
-#             (      t)*(      u)*(1.0 - v) * self.q0[i+1][j+1][k  ] +\
-#             (1.0 - t)*(      u)*(1.0 - v) * self.q0[i+1][j  ][k  ] +\
-#             (1.0 - t)*(1.0 - u)*(      v) * self.q0[i  ][j  ][k+1] +\
-#             (      t)*(1.0 - u)*(      v) * self.q0[i  ][j+1][k+1] +\
-#             (      t)*(      u)*(      v) * self.q0[i+1][j+1][k+1] +\
-#             (1.0 - t)*(      u)*(      v) * self.q0[i+1][j  ][k+1] 
  
         q0 = (1.0 - t)*(1.0 - u)*(1.0 - v) * self.q0[i  ][j  ][k  ] +\
              (1.0 - t)*(      u)*(1.0 - v) * self.q0[i  ][j+1][k  ] +\
@@ -194,15 +258,6 @@ class RadData:
              (      t)*(      u)*(      v) * self.q1[i+1][j+1][k+1] +\
              (      t)*(1.0 - u)*(      v) * self.q1[i+1][j  ][k+1] 
 
-
-#        q1 = (1.0 - t)*(1.0 - u)*(1.0 - v) * self.q1[i  ][j  ][k  ] +\
-#             (      t)*(1.0 - u)*(1.0 - v) * self.q1[i  ][j+1][k  ] +\
-#             (      t)*(      u)*(1.0 - v) * self.q1[i+1][j+1][k  ] +\
-#             (1.0 - t)*(      u)*(1.0 - v) * self.q1[i+1][j  ][k  ] +\
-#             (1.0 - t)*(1.0 - u)*(      v) * self.q1[i  ][j  ][k+1] +\
-#             (      t)*(1.0 - u)*(      v) * self.q1[i  ][j+1][k+1] +\
-#             (      t)*(      u)*(      v) * self.q1[i+1][j+1][k+1] +\
-#             (1.0 - t)*(      u)*(      v) * self.q1[i+1][j  ][k+1]
 
 
         return 1, q0, q1
@@ -451,9 +506,12 @@ class individual_star:
         table_flag     = 0
 
         if self.blackbody_only:
+
             self.ionizing_rate_blackbody()
             self.flag = blackbody_flag
+
         else:
+
             error, self.q0, self.q1 = RadiationData.interpolate(self._T,self.g,
                                                                 self._Z/const.Zsolar_ostar)
             if (error == 0): # use black body instead
@@ -466,6 +524,13 @@ class individual_star:
                     if (self.M < 20.0):
                        self.q0 = self.q0 / 10.0
                        self.q1 = self.q1 / 100.0
+            else:
+                self.flag = table_flag
+
+            error, self.FUV = RadiationData.interpolate_FUV(self._T, self.g, self._Z/const.Zsolar_ostar)
+
+            if (error == 0):
+                self.FUV = 0.0 # do nothing for now
             else:
                 self.flag = table_flag
 
