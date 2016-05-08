@@ -37,7 +37,7 @@ for metal_id in Z:
             else:
                 ostar_data = np.genfromtxt(ostar_file, usecols = (0, i + 1) )
 
-                # compute normalized FUV heating rate from both silicate and graphite grains
+                # compute FUV flux from stars
                 FUV_flux = FUV.integrate_SED(ostar_data[:,0], ostar_data[:,1])
 
                 i = i + 1

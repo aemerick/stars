@@ -116,7 +116,7 @@ class RadData:
 
 
         i = 0; j = 0; k = 0
-        data = np.genfromtxt(RADDATADIR + '/ostar2002_sed/ostar2002_FUV_all_models.dat', usecols=(2,3,4,5,6,7,8,9,10,11))
+        data = np.genfromtxt(RADDATADIR + '/ostar2002_sed/ostar2002_FUV_flux_all_models.dat', usecols=(2,3,4,5,6,7,8,9,10,11))
         for line in data:
             for k in np.arange(np.size(line)):
                 self.FUV[i][j][k] = line[k]
@@ -530,7 +530,8 @@ class individual_star:
             error, self.FUV = RadiationData.interpolate_FUV(self._T, self.g, self._Z/const.Zsolar_ostar)
 
             if (error == 0):
-                self.FUV = 0.0 # do nothing for now
+                self.FUV = self.fuv_flux_blackbody()
+                self.flag = blackbody_flag
             else:
                 self.flag = table_flag
 
@@ -549,6 +550,19 @@ class individual_star:
 
         return None
 
+    def fuv_flux_blackbody(self):
+ 
+        # minimum and maximum energy ranges in the Fuv
+        x2 = (const.E_HI / const.eV_erg) / (const.k_boltz * self._T) 
+        x1 = (6.0        / const.eV_erg) / (const.k_boltz * self._T)
+
+        
+        A = 2.0 * const.k_boltz**4 * self._T**4 / (const.h**3 * const.c**2)
+
+        fuv_flux = A * black_body_flux(x1,x2)
+
+        return fuv_flux
+
     def ionizing_rate_blackbody(self):
 
         x = (const.E_HI / const.eV_erg) / (const.k_boltz * self._T)
@@ -561,6 +575,44 @@ class individual_star:
         self.q1 = self.q1 * A
 
         return None
+
+
+def black_body_flux(x1,x2):
+    """ 
+    Compute the black body flux between given unitless energy range
+    x = (E_photon / kT) using the series approximation to compute
+    the two one-sided integrals. The returned value is unitless
+    and needs to be scaled by :
+     2 (kT)^4 / (h^3 c^2) to get units of   energy / area / steradian
+    """
+
+    return one_sided_black_body_flux(x1) - one_sided_black_body_flux(x2)
+
+def one_sided_black_body_flux(x):
+    """
+    Compute the one sided black body flux intergral between 
+    x = (E_photon / kT) using the series approximation to compute
+    The returned value is unitless and needs to be scaled by :
+     2 (kT)^4 / (h^3 c^2) to get units of   energy / area / steradian
+    """
+
+    max_iter = 513
+    min_iter = 4
+    tolerance = 1.0E-10
+
+    difference = 1.0
+
+    sum = 0.0; old_sum = 0.0
+    i = 1
+
+    while((difference > tolerance and i < max_iter) or i < min_iter):
+        old_sum = sum
+        sum += (x*x*x/(1.0*i) + 3.0*x*x/(1.0*i*i) + 6.0*x/(1.0*i*i*i) + 6.0/(1.0*i*i*i*i))*np.exp(-i*x)
+        difference  = sum - old_sum
+        i = i + 1
+
+    return sum
+
 
 def photon_radiance(x):
     max_iter = 513

@@ -49,8 +49,11 @@ def integrate_SED(frequency, sed, nu_min = None, nu_max = None):
     
     selection = (frequency <= nu_max) * (frequency >= nu_min)
 
-    frequency = frequency[::-1]
-    sed       = sed[::-1]
+    if frequency[-1] < frequency[0]: # sort in ascending order
+        frequency = frequency[::-1]
+        sed       = sed[::-1]
+
+    
 
     return 4.0 * np.pi * np.trapz(sed[selection], x = frequency[selection])
 
