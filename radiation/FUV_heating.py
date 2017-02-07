@@ -47,15 +47,13 @@ def integrate_SED(frequency, sed, nu_min = None, nu_max = None):
     if nu_max == None:
         nu_max = ((13.6 * u.eV) / (const.h.cgs)).to(u.Hz).value
     
-    selection = (frequency <= nu_max) * (frequency >= nu_min)
-
     if frequency[-1] < frequency[0]: # sort in ascending order
         frequency = frequency[::-1]
         sed       = sed[::-1]
 
-    
+    selection = (frequency <= nu_max) * (frequency >= nu_min)
 
-    return 4.0 * np.pi * np.trapz(sed[selection], x = frequency[selection])
+    return 4.0 * np.trapz(sed[selection], x = frequency[selection])
 
 def integrate_absorption_general(E_sigma, sigma, frequency, sed, W, method='simps'):
     # W assumed in Ryd
