@@ -1,0 +1,15 @@
+To extract the OSTAR2002 datasets to build the radiation tables
+used in the individual star stellar feedback routines in Enzo:
+
+1) Download the OSTAR2002 tables from:
+   http://tlusty.oca.eu/Tlusty2002/tlusty-frames-cloudy.html
+
+   This must be the OSTAR2002 tables re-binned for CLOUDY listed
+   as one .ascii.gz file per metallicity. Not all files need to be 
+   downloaded, but the full table makes use of all but the z = 0 
+   tables. (9 files total)
+
+2) use extract_sed.py to processes these files into a more uniform
+   and processible format needed for the remaining steps
+
+
