@@ -212,10 +212,9 @@ class OSTAR_SED:
         data_array[:,0] = np.array(np.sort(list(self.Teff)*np.size(self.g)))
         data_array[:,1] = np.array(list(self.g)*np.size(self.Teff))
 
-        i = 2
-        for metal_id in self._z_ids:
+        for i,metal_id in enumerate(self._z_ids):
             #flux_file = self.filepath + 'ostar2002_'+metal_id+name+'_flux.dat'
-            data_array[:,i] = flux_data[metal_id]
+            data_array[:,i+2] = flux_data[metal_id]
 
         np.savetxt(self.filepath + 'ostar2002' + name +'_flux_all_models.dat',
                    data_array,
