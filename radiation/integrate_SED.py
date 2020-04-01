@@ -169,7 +169,7 @@ class OSTAR_SED:
 
         np.savetxt(self.filepath + 'ostar2002' + name +'_flux_all_models.dat',
                    data_array,
-                   fmt = "%5.f %3.3f %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E")
+                   fmt = "%5.f %3.3f %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E")
 
         return
 
