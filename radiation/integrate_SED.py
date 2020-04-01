@@ -19,6 +19,13 @@ LW_emax   = 13.6  # eV
 class OSTAR_SED:
 
     def __init__(self, filepath, name=None):
+        """
+        Class to integrate OSTAR 2002 SED's and construct tables
+        in general format that can be used readily in other applications.
+        Handles reading in OSTAR tables (assuming processed with extract_sed.py)
+        and compiling models at all available T, g, and Z values into a single
+        table in a given band.
+        """
 
         # OSTAR metallicity file names
         self.metallicity_names = { # 'm99' : 0.000, # ignore z = 0 file
@@ -91,6 +98,32 @@ class OSTAR_SED:
         is the frequency, while the rest give the SED for a
         certain pair of T and g values. If Tval and gval
         are specified, this will only load that column.
+
+        Parameters:
+        -----------
+        metallicity : float or string
+            Metallicity (either the OSTAR2002 ID name or actual value)
+            of desired table to load. Must be exactly equal to an
+            available table
+
+        Tval : float, optional
+            The whole table is loaded unless Tval and gval are specified.
+            Tval is the desired effective temperature of model. Default : None
+
+        gval : float, optional
+            The whole table is loaded unless Tval and gval are specified.
+            gval is the desired surface gravity (in log(g)). Default : None
+
+        ignore_error : bool, optional
+            By default, routine throws an error if Tval and gval are not
+            a valid grid point in the OSTAR2002 grids. Set to True to
+            ignore this and return None instead of the data table. Default : False
+
+        Returns:
+        --------
+        ostar_data : np.ndarray
+            2D array containing frequencies and SED (flux) in cgs
+
         """
 
         if metallicity in self._z_vals:
@@ -120,7 +153,24 @@ class OSTAR_SED:
     def construct_table(self, emin, emax, name = None):
         """
         Build a single table containing the total flux
-        in a given energy band
+        in a given energy band.
+
+        Parameters
+        ----------
+        emin : float
+            Minimum energy in desired band (in eV)
+
+        emax : float
+            Maximum energy in desired band (in eV)
+
+        name : string, optional
+            Output naming string (FUV, IR, LW, etc.) to
+            describe output file. output file will be of 
+            format: 'ostar2002_'+name+'_flux_all_models.dat' Default : None
+
+        Returns
+        -------
+        void
         """
 
         if name is None:
@@ -175,7 +225,22 @@ class OSTAR_SED:
 
     def integrate_SED(self, freq, SED, emin, emax):
         """
-        Given frequency and SED values, integrate!
+        Integrates an SED.
+
+        Parameters
+        ----------
+        freq : np.ndarray
+            Frequency (in Hz). Check is made to ensure this is 
+            in ascending order
+
+        SED : np.ndarray
+            SED flux (in cgs)
+
+        emin : float
+            Minimum energy of desired band to integrate (in eV)
+
+        emax : fload
+            Maximum energy of desired band to integrate (in eV)
         """
 
         nu_min = ((emin * u.eV) / (const.h.cgs)).to(u.Hz).value
