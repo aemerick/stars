@@ -28,7 +28,7 @@ class OSTAR_SED:
         """
 
         # OSTAR metallicity file names
-        self.metallicity_names = { # 'm99' : 0.000, # ignore z = 0 file
+        self.metallicity_names = { 'm99' : 0.000,
                                    'm30' : 0.001, 'm20' : 0.01,
                                    'm17' : 1.0/50.0, 'm15' : 1.0/30.0,
                                    'm10' : 0.10, 'm07' : 0.20, 'm03' : 0.50,
@@ -206,7 +206,7 @@ class OSTAR_SED:
 
         # now grab and merge these tables
         nrows = np.size(self.Teff) * np.size(self.g)
-        ncol  = 9 + 2
+        ncol  = np.size(self._z_ids) + 2 # num of metallicities, Teff, and g
 
         data_array = np.zeros((nrows,ncol))
         data_array[:,0] = np.array(np.sort(list(self.Teff)*np.size(self.g)))
@@ -218,7 +218,7 @@ class OSTAR_SED:
 
         np.savetxt(self.filepath + 'ostar2002' + name +'_flux_all_models.dat',
                    data_array,
-                   fmt = "%5.f %3.3f %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E")
+                   fmt = "%5.f %3.3f %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E")
 
         return
 
