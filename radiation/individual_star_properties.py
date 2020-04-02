@@ -68,7 +68,7 @@ class RadData:
         self.T = np.arange(27500.0, 57500.0, 2500.0)
         self._logg = np.arange(3.0, 5.0, 0.25)
         self.g = 10.0**(self._logg)
-        self.Z = np.array([2.0, 1.0, 0.5, 0.2, 0.1, 1.0/30.0, 1/50.0, 0.01, 0.001, 0.0])
+        self.Z = np.array([0.0, 0.001, 0.01, 1/50.0, 1/30.0, 0.1, 0.2, 0.5, 1.0, 2.0])
 
         self.q0_filename = 'q0_photon_rates.in'
         self.q1_filename = 'q1_photon_rates.in'
