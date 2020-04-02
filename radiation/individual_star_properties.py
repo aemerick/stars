@@ -68,7 +68,15 @@ class RadData:
         self.T = np.arange(27500.0, 57500.0, 2500.0)
         self._logg = np.arange(3.0, 5.0, 0.25)
         self.g = 10.0**(self._logg)
-        self.Z = np.array([0.0,0.001,0.01,1/50.0,1/30.0,0.1,0.2,0.5,1.0,2.0])
+        self.Z = np.array([2.0, 1.0, 0.5, 0.2, 0.1, 1.0/30.0, 1/50.0, 0.01, 0.001, 0.0])
+
+        self.q0_filename = 'q0_photon_rates.in'
+        self.q1_filename = 'q1_photon_rates.in'
+        self.q2_filename = 'q2_photon_rates.in'
+
+        self.IR_filename = 'IR_energy_rates.in'
+        self.FUV_filename = 'FUV_energy_rates.in'
+        self.LW_filename = 'LW_energy_rates.in'
 
         self.read_star_data()
 
@@ -77,36 +85,38 @@ class RadData:
     def read_star_data(self):
         """
         Read the data from file in 3D array (as is done in C++ code)
+
+        This is definitely not the most efficient / pythonic way to do this,
+        but trying to mimick how this is done in Enzo as closely as possible
+        to help with bug catching
         """
 
         self.q0 = np.zeros(self._array_size)
         self.q1 = np.zeros(self._array_size)
+        self.q2 = np.zeros(self._array_size)
+
         self.q0 = self.q0.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
         self.q1 = self.q1.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
+        self.q2 = self.q1.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
+
 
         self.FUV = np.zeros(self._array_size)
         self.FUV = self.FUV.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
 
+        self.IR = np.zeros(self._array_size)
+        self.IR = self.IR.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
+
+        self.LW = np.zeros(self._array_size)
+        self.LW = self.LW.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
+
+
 
         i = 0; j = 0; k = 0
-        data     =  np.genfromtxt(RADDATADIR + 'q0_rates.in', usecols=(2,3,4,5,6,7,8,9,10,11))
+        data     =  np.genfromtxt(RADDATADIR + self.q0_filename, usecols=(2,3,4,5,6,7,8,9,10,11))
         for line in data:
 
             for k in np.arange(np.size(line)):
-                self.q0[i][j][np.size(line) - k - 1] = line[k]
-            
-            j = j + 1
-            
-            if (j >= self.NumberOfSGBins):
-                j = 0
-                i = i + 1
-            
-        i = 0; j = 0; k = 0
-        data =  np.genfromtxt(RADDATADIR + 'q1_rates.in', usecols=(2,3,4,5,6,7,8,9,10,11))
-        for line in data:
-
-            for k in np.arange(np.size(line)):
-                self.q1[i][j][np.size(line) - k - 1] = line[k]
+                self.q0[i][j][k] = line[k]
 
             j = j + 1
 
@@ -114,9 +124,34 @@ class RadData:
                 j = 0
                 i = i + 1
 
+        i = 0; j = 0; k = 0
+        data =  np.genfromtxt(RADDATADIR + self.q1_filename, usecols=(2,3,4,5,6,7,8,9,10,11))
+        for line in data:
+
+            for k in np.arange(np.size(line)):
+                self.q1[i][j][k] = line[k]
+
+            j = j + 1
+
+            if (j >= self.NumberOfSGBins):
+                j = 0
+                i = i + 1
 
         i = 0; j = 0; k = 0
-        data = np.genfromtxt(RADDATADIR + '/ostar2002_sed/ostar2002_FUV_flux_all_models.dat', usecols=(2,3,4,5,6,7,8,9,10,11))
+        data =  np.genfromtxt(RADDATADIR + self.q2_filename, usecols=(2,3,4,5,6,7,8,9,10,11))
+        for line in data:
+
+            for k in np.arange(np.size(line)):
+                self.q2[i][j][k] = line[k]
+
+            j = j + 1
+
+            if (j >= self.NumberOfSGBins):
+                j = 0
+                i = i + 1
+
+        i = 0; j = 0; k = 0
+        data = np.genfromtxt(RADDATADIR + self.FUV_filename, usecols=(2,3,4,5,6,7,8,9,10,11))
         for line in data:
             for k in np.arange(np.size(line)):
                 self.FUV[i][j][k] = line[k]
@@ -126,16 +161,45 @@ class RadData:
             if ( j >= self.NumberOfSGBins):
                 j = 0
                 i = i + 1
+
+        i = 0; j = 0; k = 0
+        data = np.genfromtxt(RADDATADIR + self.IR_filename, usecols=(2,3,4,5,6,7,8,9,10,11))
+        for line in data:
+            for k in np.arange(np.size(line)):
+                self.IR[i][j][k] = line[k]
+
+            j = j + 1
+
+            if ( j >= self.NumberOfSGBins):
+                j = 0
+                i = i + 1
+
+        i = 0; j = 0; k = 0
+        data = np.genfromtxt(RADDATADIR + self.LW_filename, usecols=(2,3,4,5,6,7,8,9,10,11))
+        for line in data:
+            for k in np.arange(np.size(line)):
+                self.LW[i][j][k] = line[k]
+
+            j = j + 1
+
+            if ( j >= self.NumberOfSGBins):
+                j = 0
+                i = i + 1
+
       
         # un-log q values
         self.q0 = 10.0**(self.q0)
         self.q1 = 10.0**(self.q1)
+        self.q2 = 10.0**(self.q2)
 
         self.FUV[ self.FUV < 0.0 ] = -1 # set flagged values to -1
+        self.LW [ self.LW  < 0.0 ] = -1
+        self.IR [ self.IR  < 0.0 ] = -1
 
         return None
 
-    def interpolate_FUV(self, T, g, Z):
+
+    def _generic_interpolate(self, array, T, g, Z):
 
         # make sure T, g, and Z are in bounds of tabulated data
         if ( T < np.min(self.T) or T > np.max(self.T)):
@@ -167,37 +231,54 @@ class RadData:
         # which means that this combination of T, g is untabulated
         # a q value of 1.0 means a logq value of 0.00 in the table,
         # which means that this combination of T, g is untabulated
-        if( self.FUV[i  ][j  ][k  ] < 0 or
-            self.FUV[i  ][j+1][k  ] < 0 or
-            self.FUV[i+1][j+1][k  ] < 0 or
-            self.FUV[i+1][j  ][k  ] < 0 or
-            self.FUV[i  ][j  ][k+1] < 0 or
-            self.FUV[i  ][j+1][k+1] < 0 or
-            self.FUV[i+1][j+1][k+1] < 0 or
-            self.FUV[i+1][j  ][k+1] < 0   ):
+        if( array[i  ][j  ][k  ] < 0 or
+            array[i  ][j+1][k  ] < 0 or
+            array[i+1][j+1][k  ] < 0 or
+            array[i+1][j  ][k  ] < 0 or
+            array[i  ][j  ][k+1] < 0 or
+            array[i  ][j+1][k+1] < 0 or
+            array[i+1][j+1][k+1] < 0 or
+            array[i+1][j  ][k+1] < 0   ):
 
             return 0 , 0 
 
 
-        FUV = (1.0 - t)*(1.0 - u)*(1.0 - v) * self.FUV[i  ][j  ][k  ] +\
-             (1.0 - t)*(      u)*(1.0 - v) * self.FUV[i  ][j+1][k  ] +\
-             (      t)*(      u)*(1.0 - v) * self.FUV[i+1][j+1][k  ] +\
-             (      t)*(1.0 - u)*(1.0 - v) * self.FUV[i+1][j  ][k  ] +\
-             (1.0 - t)*(1.0 - u)*(      v) * self.FUV[i  ][j  ][k+1] +\
-             (1.0 - t)*(      u)*(      v) * self.FUV[i  ][j+1][k+1] +\
-             (      t)*(      u)*(      v) * self.FUV[i+1][j+1][k+1] +\
-             (      t)*(1.0 - u)*(      v) * self.FUV[i+1][j  ][k+1]
+        val = (1.0 - t)*(1.0 - u)*(1.0 - v) * array[i  ][j  ][k  ] +\
+              (1.0 - t)*(      u)*(1.0 - v) * array[i  ][j+1][k  ] +\
+              (      t)*(      u)*(1.0 - v) * array[i+1][j+1][k  ] +\
+              (      t)*(1.0 - u)*(1.0 - v) * array[i+1][j  ][k  ] +\
+              (1.0 - t)*(1.0 - u)*(      v) * array[i  ][j  ][k+1] +\
+              (1.0 - t)*(      u)*(      v) * array[i  ][j+1][k+1] +\
+              (      t)*(      u)*(      v) * array[i+1][j+1][k+1] +\
+              (      t)*(1.0 - u)*(      v) * array[i+1][j  ][k+1]
 
 
-        return 1, FUV
-    
-    def interpolate(self, T, g, Z):        
+        return 1, val
+
+
+    def interpolate_FUV(self, T, g, Z):
+
+        return self._generic_interpolate(self.FUV, T, g, Z)
+
+    def interpolate_LW(self, T, g, Z):
+        return self._generic_interpolate(self.LW, T, g, Z)
+
+    def interpolate_IR(self, T, g, Z):
+        return self._generic_interpolate(self.IR, T, g, Z)
+
+    def interpolate_ionizing_fluxes(self, T, g, Z):
         """
         Tri-linear interpolation of data given desired point in T, g, Z space
 
         Returning 0 signifies a failure and need to do blackbody curve integration.
         Returning 1 signifies a successful interpolation
 
+ 
+        Returns:
+        success : int (0 or 1)
+
+        q0, q1, q2 : float
+            Ionizing photon fluxes
         """
 
         # make sure T, g, and Z are in bounds of tabulated data
@@ -212,11 +293,11 @@ class RadData:
         i     = (np.abs(self.T - T)).argmin()
         if (T < self.T[i]):
             i = i - 1
-        
+
         j = (np.abs(self.g - g)).argmin()
         if (g < self.g[j]):
             j = j - 1
-     
+
         k = (np.abs(self.Z - Z)).argmin()
         if (Z < self.Z[k]):
             k = k - 1
@@ -225,7 +306,7 @@ class RadData:
         t = (T - self.T[i])/(self.T[i+1] - self.T[i])
         u = (g - self.g[j])/(self.g[j+1] - self.g[j])
         v = (Z - self.Z[k])/(self.Z[k+1] - self.Z[k])
- 
+
         # a q value of 1.0 means a logq value of 0.00 in the table,
         # which means that this combination of T, g is untabulated
         if( self.q0[i  ][j  ][k  ] == 1.0 or
@@ -236,10 +317,9 @@ class RadData:
             self.q0[i  ][j+1][k+1] == 1.0 or
             self.q0[i+1][j+1][k+1] == 1.0 or
             self.q0[i+1][j  ][k+1] == 1.0   ):
-       
+
             return 0,0,0
 
- 
         q0 = (1.0 - t)*(1.0 - u)*(1.0 - v) * self.q0[i  ][j  ][k  ] +\
              (1.0 - t)*(      u)*(1.0 - v) * self.q0[i  ][j+1][k  ] +\
              (      t)*(      u)*(1.0 - v) * self.q0[i+1][j+1][k  ] +\
@@ -258,9 +338,16 @@ class RadData:
              (      t)*(      u)*(      v) * self.q1[i+1][j+1][k+1] +\
              (      t)*(1.0 - u)*(      v) * self.q1[i+1][j  ][k+1] 
 
+        q2 = (1.0 - t)*(1.0 - u)*(1.0 - v) * self.q2[i  ][j  ][k  ] +\
+             (1.0 - t)*(      u)*(1.0 - v) * self.q2[i  ][j+1][k  ] +\
+             (      t)*(      u)*(1.0 - v) * self.q2[i+1][j+1][k  ] +\
+             (      t)*(1.0 - u)*(1.0 - v) * self.q2[i+1][j  ][k  ] +\
+             (1.0 - t)*(1.0 - u)*(      v) * self.q2[i  ][j  ][k+1] +\
+             (1.0 - t)*(      u)*(      v) * self.q2[i  ][j+1][k+1] +\
+             (      t)*(      u)*(      v) * self.q2[i+1][j+1][k+1] +\
+             (      t)*(1.0 - u)*(      v) * self.q2[i+1][j  ][k+1] 
 
-
-        return 1, q0, q1
+        return 1, q0, q1, q2
 
 # make the global variable
 RadiationData = RadData()
