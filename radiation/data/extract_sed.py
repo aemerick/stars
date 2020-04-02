@@ -32,8 +32,8 @@ def extract_sed(filepath = './ostar2002_sed'):
                         'm15', # 1/30
                         'm17', # 1/50
                         'm20', # 1/100
-                        'm30'] # 1/1000
-#                    'm99'] -- don't use z = 0
+                        'm30', # 1/1000
+                        'm99'] # -- don't use z = 0
 
     header_count   = 29 
     full_rows      = 4000 # (4000 for all, but 1000 for Z=0) each model takes up this many rows in the file
@@ -44,6 +44,20 @@ def extract_sed(filepath = './ostar2002_sed'):
 
 
     for identifier in identifier_names:
+
+        if identifier == 'm99':
+            full_rows = 1000
+            rows_per_model = full_rows - 1
+            nbins = rows_per_model * 5
+            nmodel = 69
+        else:
+            full_rows      = 4000 # (4000 for all, but 1000 for Z=0) each model takes up this many rows in the file
+            rows_per_model = full_rows - 1 # cut out last row since it only has 3 col
+
+            nbins  = rows_per_model * 5   # number of bins
+            nmodel = 69                   # number of OSTAR2002 models
+
+
         OSTAR_file  = filepath + 'ostar2002_' + identifier + '.ascii'
         outname     = filepath + 'ostar2002_' + identifier + '_extracted.dat'
 
