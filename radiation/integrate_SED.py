@@ -161,7 +161,8 @@ class OSTAR_SED:
         return ostar_data
 
     def construct_table(self, emin, emax, name = None, precision = 4,
-                        flux_type = 'flux', output_log = False):
+                        flux_type = 'flux', output_log = False,
+                        output_name = None):
         """
         Build a single table containing the total flux
         in a given energy band.
@@ -189,6 +190,10 @@ class OSTAR_SED:
 
         output_precision : int, optional
             Precision of output fluxes. Default : 4
+
+        output_name : string, optional
+            If provided, overrides default naming scheme with this string
+            for the output file. Default : None
 
         Returns
         -------
@@ -247,8 +252,10 @@ class OSTAR_SED:
             fmt = fmt + (" " + prec_string + "E")*np.size(self._z_ids)
 
 
-        np.savetxt(self.filepath + 'ostar2002' + name +'_flux_all_models.dat',
-                   data_array, fmt = fmt)
+        if output_name is None:
+            output_name = 'ostar2002' + name + '_flux_all_models.dat'
+
+        np.savetxt(self.filepath + output_name, data_array, fmt = fmt)
 
         return
 
@@ -302,7 +309,9 @@ class OSTAR_SED:
 
 
 def compute_all_tables(filepath):
-
+    """
+    Build all tables
+    """
 
     ostar = OSTAR_SED(filepath)
 
@@ -310,19 +319,34 @@ def compute_all_tables(filepath):
     output_log  = False
 
     print("Building tables needed for individual star model in Enzo")
-    ostar.construct_table(FUV_emin, FUV_emax, name = 'FUV', precision=precision,output_log=output_log)
+    print("by default, these tables compute the IR, FUV, and LW band fluxes (erg/s/cm^2)")
+    print("and the HI, HeI, HeII ionizing photon fluxes (1/s/cm^2). This may take a few minutes.")
+
+    ostar.construct_table(FUV_emin, FUV_emax, output_name = "FUV_energy_rates.in",
+                          precision=precision,output_log=output_log)
     print("FUV complete")
-    ostar.construct_table(LW_emin, LW_emax, name = 'LW',precision=precision,output_log=output_log)
+
+    ostar.construct_table(LW_emin, LW_emax, output_name = "LW_energy_rates.in",
+                          precision=precision,output_log=output_log)
     print("LW complete")
-    ostar.construct_table(IR_emin, IR_emax, name = 'IR',precision=precision,output_log=output_log)
+
+    ostar.construct_table(IR_emin, IR_emax, output_name = "IR_energy_rates.in",
+                          precision=precision,output_log=output_log)
     print("IR complete")
 
-
-    ostar.construct_table(HI_emin, HI_emax, name = 'HI', flux_type = 'photon',precision=precision,output_log=output_log)
+    ostar.construct_table(HI_emin, HI_emax, output_name = "q0_photon_rates.in",
+                          flux_type = 'photon',
+                          precision=precision,output_log=output_log)
     print("HI complete")
-    ostar.construct_table(HeI_emin, HeI_emax, name = 'HeI', flux_type = 'photon',precision=precision,output_log=output_log)
+
+    ostar.construct_table(HeI_emin, HeI_emax, output_name = "q1_photon_rates.in",
+                          flux_type = 'photon',
+                          precision=precision,output_log=output_log)
     print("HeI complete")
-    ostar.construct_table(HeII_emin, HeII_emax, name = 'HeII', flux_type = 'photon',precision=precision,output_log=output_log)
+
+    ostar.construct_table(HeII_emin, HeII_emax, output_name = "q2_photon_rates.in",
+                          flux_type = 'photon',
+                          precision=precision,output_log=output_log)
     print("HeII complete")
 
     return
