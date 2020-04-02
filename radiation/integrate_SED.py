@@ -38,10 +38,11 @@ class OSTAR_SED:
 
         # OSTAR metallicity file names
         #   this needs to be in high-to-low order
-        self.metallicity_names = { 'p03' : 2.00,'p00':1.0,'m03':0.50,
-                                   'm07' : 0.20, 'm10':0.10, 'm15' : 1.0/30.0,
-                                   'm17' : 1.0/50.0, 'm20' : 0.01, 'm30' : 0.001,
-                                   'm99' : 0.000}
+        self.metallicity_names = { 'm99' : 0.000, 'm30' : 0.001, 'm20' : 0.01,
+                                   'm17' : 1.0/50.0, 'm15' : 1.0/30.0, 'm10' : 0.10,
+                                   'm07' : 0.20,     'm03' : 0.50,     'p00' : 1.00,
+                                   'p03' : 2.00}
+
 
         self._z_ids = list(self.metallicity_names.keys())
         self._z_vals = list(self.metallicity_names.values())
