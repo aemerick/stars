@@ -16,6 +16,15 @@ FUV_emax  = 11.2  # eV
 LW_emin   = 11.2  # eV
 LW_emax   = 13.6  # eV
 
+HI_emin = 13.6  # eV
+HI_emax = np.inf
+
+HeI_emin = 24.6   # eV
+HeI_emax = np.inf
+
+HeII_emin = 54.42  # eV
+HeII_emax = np.inf
+
 class OSTAR_SED:
 
     def __init__(self, filepath, name=None):
@@ -151,7 +160,8 @@ class OSTAR_SED:
 
         return ostar_data
 
-    def construct_table(self, emin, emax, name = None):
+    def construct_table(self, emin, emax, name = None, precision = 4,
+                        flux_type = 'flux', output_log = False):
         """
         Build a single table containing the total flux
         in a given energy band.
@@ -168,6 +178,17 @@ class OSTAR_SED:
             Output naming string (FUV, IR, LW, etc.) to
             describe output file. output file will be of 
             format: 'ostar2002_'+name+'_flux_all_models.dat' Default : None
+
+        flux_type : string, optional
+            Output table as either energy flux (erg/s/cm^2) or photon
+            flux (1/s/cm^2). Default is energy flux. See 
+            'integrate_SED' for more details. Default : 'flux'
+
+        output_log : bool, optional
+            Output logged fluxes. Default: False
+
+        output_precision : int, optional
+            Precision of output fluxes. Default : 4
 
         Returns
         -------
@@ -199,7 +220,7 @@ class OSTAR_SED:
                     else:
                         flux_data[metal_id][i] = self.integrate_SED(ostar_data[:,0],
                                              ostar_data[:,1],
-                                             emin=emin, emax=emax)
+                                             emin=emin, emax=emax, flux_type = flux_type)
                     i = i + 1
             #
             # f.write("%5.5f %3.3f %6.6E\n"%(Tval,gval, flux))
@@ -217,13 +238,21 @@ class OSTAR_SED:
             #flux_file = self.filepath + 'ostar2002_'+metal_id+name+'_flux.dat'
             data_array[:,i+2] = flux_data[metal_id]
 
+        fmt = "%5.f %3.3f "
+        prec_string = "%" + "%i.%i"%(precision+2,precision)
+
+        if output_log:
+            fmt = fmt + (" " + prec_string + "f")*np.size(self._z_ids)
+        else:
+            fmt = fmt + (" " + prec_string + "E")*np.size(self._z_ids)
+
+
         np.savetxt(self.filepath + 'ostar2002' + name +'_flux_all_models.dat',
-                   data_array,
-                   fmt = "%5.f %3.3f %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E %6.6E")
+                   data_array, fmt = fmt)
 
         return
 
-    def integrate_SED(self, freq, SED, emin, emax):
+    def integrate_SED(self, freq, SED, emin, emax, flux_type = 'flux'):
         """
         Integrates an SED.
 
@@ -239,8 +268,14 @@ class OSTAR_SED:
         emin : float
             Minimum energy of desired band to integrate (in eV)
 
-        emax : fload
+        emax : float
             Maximum energy of desired band to integrate (in eV)
+
+        flux_type : string, optional
+            Output type. Defaults to returning the energy flux (erg/s/cm^2)
+            if 'flux' or 'energy flux' or 'energy' is provided. Otherwise
+            'photon' or 'photon flux' will return the photon counts
+            (1/s/cm^2). Default : 'flux'
         """
 
         nu_min = ((emin * u.eV) / (const.h.cgs)).to(u.Hz).value
@@ -252,7 +287,18 @@ class OSTAR_SED:
 
         selection = (freq<=nu_max)*(freq>nu_min)
 
-        return 4.0 * np.trapz(SED[selection], x = freq[selection])
+
+        if flux_type in ['flux','energy','energy flux']:
+
+            flux = np.trapz(SED[selection], x = freq[selection])
+
+        elif flux_type in ['photon','photon flux']:
+
+            photon_energy = ((freq[selection]*u.Hz)*const.h).to(u.erg).value
+
+            flux = np.trapz(SED[selection]/photon_energy, x = freq[selection])
+
+        return 4.0 * np.pi * flux
 
 
 def compute_all_tables(filepath):
@@ -260,14 +306,24 @@ def compute_all_tables(filepath):
 
     ostar = OSTAR_SED(filepath)
 
+    precision   = 4
+    output_log  = False
+
     print("Building tables needed for individual star model in Enzo")
-    ostar.construct_table(FUV_emin, FUV_emax, name = 'FUV')
+    ostar.construct_table(FUV_emin, FUV_emax, name = 'FUV', precision=precision,output_log=output_log)
     print("FUV complete")
-    ostar.construct_table(LW_emin, LW_emax, name = 'LW')
+    ostar.construct_table(LW_emin, LW_emax, name = 'LW',precision=precision,output_log=output_log)
     print("LW complete")
-    ostar.construct_table(IR_emin, IR_emax, name = 'IR')
+    ostar.construct_table(IR_emin, IR_emax, name = 'IR',precision=precision,output_log=output_log)
     print("IR complete")
 
+
+    ostar.construct_table(HI_emin, HI_emax, name = 'HI', flux_type = 'photon',precision=precision,output_log=output_log)
+    print("HI complete")
+    ostar.construct_table(HeI_emin, HeI_emax, name = 'HeI', flux_type = 'photon',precision=precision,output_log=output_log)
+    print("HeI complete")
+    ostar.construct_table(HeII_emin, HeII_emax, name = 'HeII', flux_type = 'photon',precision=precision,output_log=output_log)
+    print("HeII complete")
 
     return
 
