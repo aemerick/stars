@@ -20,6 +20,19 @@
 
 import numpy as np
 
+
+
+BB_corrections = {'q0' : (0.134217, 2.91754),
+                  'q1' : (6.63647E-3, 5.10396),
+                  'q2' : (2.87337E-5, 0.0368749),
+                  'IR' : (2.32886, 2.388),
+                  'FUV' : (3.94039, 2.628),
+                  'LW'  : (6.104413, 2.785)}
+
+if False:
+    for k in BB_corrections:
+        BB_corrections[k] = (1.0,1.0)
+
 class constants:
     """ 
     Helpful contants. In cgs or cgs conversions 
@@ -39,6 +52,7 @@ class constants:
         self.tau_sun = 10.0E9 * 3.1536E7 # solar lifetime in cgs
         self.E_HI    = 13.6 # eV
         self.E_HeI   = 24.587
+        self.E_HeII  = 54.4
         self.Zsolar_ostar  = 0.01700 # Grevesse & Sauval 1998 - used in OSTAR2002
         self.Zsolar_parsec = 0.01524     # Caffau et. al. 2009 / 2011 - used in PARSEC SE code
 
@@ -47,8 +61,8 @@ class constants:
 # making a global object to be used below
 const = constants()
 ###########################################################
-RADDATADIR  = '/home/emerick/Research/stars/radiation/data/'
-ZAMSDATADIR = '/home/emerick/Research/stars/radiation/sissa_data/'
+RADDATADIR  = '/home/aemerick/code/stars/radiation/data/'
+ZAMSDATADIR = '/home/aemerick/code/stars/radiation/data/'
 
 class RadData:
     """
@@ -97,7 +111,7 @@ class RadData:
 
         self.q0 = self.q0.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
         self.q1 = self.q1.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
-        self.q2 = self.q1.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
+        self.q2 = self.q2.reshape((self.NumberOfTemperatureBins, self.NumberOfSGBins, self.NumberOfMetallicityBins))
 
 
         self.FUV = np.zeros(self._array_size)
@@ -188,9 +202,9 @@ class RadData:
 
       
         # un-log q values
-        self.q0 = 10.0**(self.q0)
-        self.q1 = 10.0**(self.q1)
-        self.q2 = 10.0**(self.q2)
+#        self.q0 = 10.0**(self.q0)
+#        self.q1 = 10.0**(self.q1)
+#        self.q2 = 10.0**(self.q2)
 
         self.FUV[ self.FUV < 0.0 ] = -1 # set flagged values to -1
         self.LW [ self.LW  < 0.0 ] = -1
@@ -283,11 +297,11 @@ class RadData:
 
         # make sure T, g, and Z are in bounds of tabulated data
         if ( T < np.min(self.T) or T > np.max(self.T)):
-            return 0, 0, 0
+            return 0, 0, 0, 0
         if ( g < np.min(self.g) or g > np.max(self.g)):
-            return 0, 0 ,0
+            return 0, 0 ,0, 0
         if ( Z < np.min(self.Z) or Z > np.max(self.Z)):
-            return 0, 0, 0
+            return 0, 0, 0, 0
 
         # find the nearest bin in each dimension (cheating from C++ version)
         i     = (np.abs(self.T - T)).argmin()
@@ -318,7 +332,7 @@ class RadData:
             self.q0[i+1][j+1][k+1] == 1.0 or
             self.q0[i+1][j  ][k+1] == 1.0   ):
 
-            return 0,0,0
+            return 0,0,0,0
 
         q0 = (1.0 - t)*(1.0 - u)*(1.0 - v) * self.q0[i  ][j  ][k  ] +\
              (1.0 - t)*(      u)*(1.0 - v) * self.q0[i  ][j+1][k  ] +\
@@ -383,7 +397,7 @@ class ZAMS_data:
         self.R    = self.R.reshape((self.NumberOfMassBins, self.NumberOfMetallicityBins))
 
         i = 0; j = 0
-        data = np.genfromtxt(ZAMSDATADIR + 'ZAMS_data.in')
+        data = np.genfromtxt(ZAMSDATADIR + 'parsec_zams.in')
         for line in data:
             self.L[i][j]    = 10**(line[2])
             self.Teff[i][j] = 10**(line[3])
@@ -408,19 +422,19 @@ class ZAMS_data:
 
         # make sure T, g, and Z are in bounds of tabulated data
         if ( M < np.min(self.M) or M > np.max(self.M)):
-            print "Mass out of bounds"
+            print("Mass out of bounds")
             if return_only == None:
                 return 0, 0, 0, 0
             else:
                 return 0
         if ( Z < np.min(self.Z)):
-            print "metallicity too low"
+            print("metallicity too low")
             if return_only == None:
                 return 0, 0, 0, 0
             else:
                 return 0
         if ( Z > np.max(self.Z)):
-            print "warning: making ZAMS interpolation metallicity just under max"
+            print("warning: making ZAMS interpolation metallicity just under max")
             Z = 0.99 * np.max(self.Z)
 
         # find the nearest bin in each dimension (cheating from C++ version)
@@ -592,6 +606,11 @@ class individual_star:
         blackbody_flag = 1
         table_flag     = 0
 
+        if self.M < 20.0:
+            BB_index = 0
+        else:
+            BB_index = 1
+
         if self.blackbody_only:
 
             self.ionizing_rate_blackbody()
@@ -599,25 +618,26 @@ class individual_star:
 
         else:
 
-            error, self.q0, self.q1 = RadiationData.interpolate(self._T,self.g,
+            error, self.q0, self.q1, self.q2 = RadiationData.interpolate_ionizing_fluxes(self._T,self.g,
                                                                 self._Z/const.Zsolar_ostar)
             if (error == 0): # use black body instead
                 self.ionizing_rate_blackbody()
                 self.flag = blackbody_flag
-                if False:
-                    if (self.M > 20.0):
-                        self.q0 = self.q0 * 2.89
-                        self.q1 = self.q1 * 5.2
-                    if (self.M < 20.0):
-                       self.q0 = self.q0 / 10.0
-                       self.q1 = self.q1 / 100.0
+                if True:
+                    self.q0 = self.q0 * BB_corrections['q0'][BB_index]
+                    self.q1 = self.q1 * BB_corrections['q1'][BB_index]
+                    self.q2 = self.q2 * BB_corrections['q2'][BB_index]
             else:
                 self.flag = table_flag
 
             error, self.FUV = RadiationData.interpolate_FUV(self._T, self.g, self._Z/const.Zsolar_ostar)
+            error, self.IR  = RadiationData.interpolate_IR(self._T, self.g, self._Z/const.Zsolar_ostar)
+            error, self.LW  = RadiationData.interpolate_LW(self._T, self.g, self._Z/const.Zsolar_ostar)
 
             if (error == 0):
-                self.FUV = self.fuv_flux_blackbody()
+                self.FUV = self.fuv_flux_blackbody() * BB_corrections['FUV'][BB_index]
+                self.IR  = self.ir_flux_blackbody()  * BB_corrections['IR'][BB_index]
+                self.LW  = self.lw_flux_blackbody()  * BB_corrections['LW'][BB_index]
                 self.flag = blackbody_flag
             else:
                 self.flag = table_flag
@@ -626,29 +646,37 @@ class individual_star:
         surface_area = 4.0 * np.pi * self._R**2
         self.q0 = self.q0 * surface_area
         self.q1 = self.q1 * surface_area
+        self.q2 = self.q2 * surface_area
 
         # now compute the average energy using a black body
         self.E0 = average_energy(const.E_HI/const.eV_erg, self._T)
         self.E1 = average_energy(const.E_HeI/const.eV_erg, self._T)
+        self.E2 = average_energy(const.E_HeII/const.eV_erg, self._T)
         self.E0 = self.E0 * const.eV_erg
         self.E1 = self.E1 * const.eV_erg
+        self.E2 = self.E2 * const.eV_erg
 
 
 
         return None
 
-    def fuv_flux_blackbody(self):
- 
-        # minimum and maximum energy ranges in the Fuv
-        x2 = (const.E_HI / const.eV_erg) / (const.k_boltz * self._T) 
-        x1 = (6.0        / const.eV_erg) / (const.k_boltz * self._T)
+    def flux_blackbody(self, emin, emax):
 
-        
+        x2 = (emax / const.eV_erg) / (const.k_boltz * self._T)
+        x1 = (emin / const.eV_erg) / (const.k_boltz * self._T)
+
         A = 2.0 * const.k_boltz**4 * self._T**4 / (const.h**3 * const.c**2)
 
-        fuv_flux = A * black_body_flux(x1,x2)
+        return A * black_body_flux(x1,x2)
 
-        return fuv_flux
+    def fuv_flux_blackbody(self):
+        return self.flux_blackbody( 5.6, 11.2)
+
+    def lw_flux_blackbody(self):
+        return self.flux_blackbody(11.2,13.6)
+
+    def ir_flux_blackbody(self):
+        return self.flux_blackbody(0.76,5.6)
 
     def ionizing_rate_blackbody(self):
 
@@ -656,10 +684,13 @@ class individual_star:
         self.q0 = photon_radiance(x)
         x = (const.E_HeI / const.eV_erg) / (const.k_boltz * self._T)
         self.q1 = photon_radiance(x)
+        x = (const.E_HeII / const.eV_erg) / (const.k_boltz * self._T)
+        self.q2 = photon_radiance(x)
 
         A=  2.0 * const.k_boltz**3 * self._T**3 / (const.h**3 *const.c**2)
         self.q0 = self.q0 * A
         self.q1 = self.q1 * A
+        self.q2 = self.q2 * A
 
         return None
 
@@ -754,9 +785,12 @@ def compute_blackbody_rate(T):
     q0 = photon_radiance(x)
     x = (const.E_HeI / const.eV_erg) / (const.k_boltz * T)
     q1 = photon_radiance(x)
+    x = (const.E_HeII / const.eV_erg) / (const.k_boltz * T)
+    q2 = photon_radiance(x)
 
     A=  2.0 * const.k_boltz**3 * T**3 / (const.h**3 *const.c**2)
     q0 = q0 * A
     q1 = q1 * A
+    q2 = q2 * A
 
-    return q0, q1
+    return q0, q1, q2
