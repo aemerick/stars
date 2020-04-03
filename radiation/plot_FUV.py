@@ -15,7 +15,7 @@ blackbody_only = False
 light_blue     = 'blue'
 light_red      = 'orange'
 Zsolar         = isp.const.Zsolar_parsec
-Z              = 0.015
+Z              = 0.01
 Z = Z / isp.const.Zsolar_parsec
 
 
@@ -42,13 +42,15 @@ def generate_colored_lines(x,y,cval, color = ['orange','black'], ls = '-', lw = 
     return lc
 
 # make a list of star masses
-#M = np.logspace(1.0, 2.0, 100.0)
-M = np.linspace(1.0, 100.0, 1000.0)
+#M = np.logspace(1.0, 2.0, 100)
+M = np.linspace(1.0, 100.0, 1000)
 
 star_list = [None]*np.size(M)
 T   = np.zeros(np.size(M))
 R   = np.zeros(np.size(M))
 FUV = np.zeros(np.size(M))
+IR = np.zeros(np.size(M))
+LWf = np.zeros(np.size(M))
 flag = np.zeros(np.size(M))
 N  = 1.0
 for i in np.arange(np.size(M)):
@@ -56,12 +58,14 @@ for i in np.arange(np.size(M)):
     T[i]    = star_list[i]._T
     R[i]    = star_list[i]._R
     FUV[i]  = star_list[i].FUV
+    IR[i]   = star_list[i].IR
+    LWf[i]  = star_list[i].LW
     flag[i] = star_list[i].flag
 
-
-print T
-plt.plot(M, FUV * 4.0 * np.pi * R[i]**2 , lw = lw, color = 'black', ls = '-')
-
+N = 4.0 * np.pi * R[i]**2
+plt.plot(M, FUV * N , lw = lw, color = 'C0', ls = '-', label = 'FUV')
+plt.plot(M, IR  * N , lw = lw, color = 'C1', ls = '-', label = 'IR')
+plt.plot(M, LWf  * N , lw = lw, color = 'C2', ls = '-', label = 'LW')
 
 plt.legend(loc='lower right')
 plt.xlabel(r'Mass (M$_{\odot})$')
